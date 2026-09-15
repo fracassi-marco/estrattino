@@ -6,7 +6,7 @@ import { BalanceBand } from "../components/BalanceBand";
 import { MonthCard } from "../components/MonthCard";
 import { MonthlyBarChart } from "../components/MonthlyBarChart";
 import { useTransactions } from "../context/TransactionsContext";
-import { summarizeByMonth } from "../lib/months";
+import { monthKey, summarizeByMonth } from "../lib/months";
 import { colors } from "../lib/theme";
 import { MonthSummary } from "../lib/types";
 
@@ -24,7 +24,9 @@ export default function HomeScreen() {
     [allMonths]
   );
   const yearSummary = useMemo(() => {
-    const lastYear = allMonths.slice(0, YEAR_MONTHS);
+    const currentMonthKey = monthKey(new Date().toISOString());
+    const completedMonths = allMonths.filter((m) => m.key !== currentMonthKey);
+    const lastYear = completedMonths.slice(0, YEAR_MONTHS);
     const totals = lastYear.reduce(
       (acc, m) => ({
         income: acc.income + m.income,
