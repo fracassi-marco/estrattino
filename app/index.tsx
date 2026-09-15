@@ -25,7 +25,7 @@ export default function HomeScreen() {
   );
   const yearSummary = useMemo(() => {
     const lastYear = allMonths.slice(0, YEAR_MONTHS);
-    return lastYear.reduce(
+    const totals = lastYear.reduce(
       (acc, m) => ({
         income: acc.income + m.income,
         expense: acc.expense + m.expense,
@@ -33,6 +33,13 @@ export default function HomeScreen() {
       }),
       { income: 0, expense: 0, diff: 0 }
     );
+    const months = lastYear.length || 1;
+    return {
+      ...totals,
+      avgIncome: totals.income / months,
+      avgExpense: totals.expense / months,
+      avgDiff: totals.diff / months,
+    };
   }, [allMonths]);
 
   const goToMonth = (key: string) => router.push(`/month/${key}`);
@@ -61,6 +68,9 @@ export default function HomeScreen() {
         income={yearSummary.income}
         expense={yearSummary.expense}
         diff={yearSummary.diff}
+        avgIncome={yearSummary.avgIncome}
+        avgExpense={yearSummary.avgExpense}
+        avgDiff={yearSummary.avgDiff}
         importing={importing}
         onImport={handleImport}
       />
@@ -81,7 +91,12 @@ export default function HomeScreen() {
               </View>
             ) : (
               <>
-                <MonthlyBarChart months={chartMonths} onSelectMonth={goToMonth} />
+                <MonthlyBarChart
+                  months={chartMonths}
+                  onSelectMonth={goToMonth}
+                  avgIncome={yearSummary.avgIncome}
+                  avgExpense={yearSummary.avgExpense}
+                />
                 <Text style={styles.sectionTitle}>Riepilogo mensile</Text>
               </>
             )}

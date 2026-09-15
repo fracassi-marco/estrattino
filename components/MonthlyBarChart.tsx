@@ -7,6 +7,7 @@ import { MonthSummary } from "../lib/types";
 const CHART_HEIGHT = 140;
 const BAR_WIDTH = 10;
 const COLUMN_WIDTH = 40;
+const LABEL_AREA_HEIGHT = 28; // space below the bars reserved for the month label
 
 const INCOME_COLOR = colors.primary;
 const EXPENSE_COLOR = colors.expense;
@@ -15,9 +16,11 @@ interface Props {
   /** Chronologically ascending, already limited to the months to display. */
   months: MonthSummary[];
   onSelectMonth: (key: string) => void;
+  avgIncome?: number;
+  avgExpense?: number;
 }
 
-export function MonthlyBarChart({ months, onSelectMonth }: Props) {
+export function MonthlyBarChart({ months, onSelectMonth, avgIncome, avgExpense }: Props) {
   const maxValue = Math.max(1, ...months.flatMap((m) => [m.income, m.expense]));
 
   return (
@@ -33,6 +36,30 @@ export function MonthlyBarChart({ months, onSelectMonth }: Props) {
         </View>
       </View>
       <View style={styles.chartRow}>
+        {!!avgIncome && (
+          <View
+            pointerEvents="none"
+            style={[
+              styles.avgLine,
+              {
+                bottom: LABEL_AREA_HEIGHT + (avgIncome / maxValue) * CHART_HEIGHT,
+                borderColor: INCOME_COLOR,
+              },
+            ]}
+          />
+        )}
+        {!!avgExpense && (
+          <View
+            pointerEvents="none"
+            style={[
+              styles.avgLine,
+              {
+                bottom: LABEL_AREA_HEIGHT + (avgExpense / maxValue) * CHART_HEIGHT,
+                borderColor: EXPENSE_COLOR,
+              },
+            ]}
+          />
+        )}
         {months.map((m) => {
           const incomeHeight = Math.max(2, (m.income / maxValue) * CHART_HEIGHT);
           const expenseHeight = Math.max(2, (m.expense / maxValue) * CHART_HEIGHT);
@@ -78,6 +105,14 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     justifyContent: "space-evenly",
     height: CHART_HEIGHT + 28,
+    position: "relative",
+  },
+  avgLine: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    borderTopWidth: 1,
+    borderStyle: "dashed",
   },
   column: {
     alignItems: "center",
