@@ -2,7 +2,7 @@
   "expo": {
     "name": "Estrattino",
     "slug": "estrattino",
-    "version": "0.0.8",
+    "version": "0.0.9",
     "scheme": "estrattino",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
