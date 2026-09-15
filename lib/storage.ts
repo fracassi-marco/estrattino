@@ -57,3 +57,21 @@ export async function mergeTransactions(
 export async function clearTransactions(): Promise<void> {
   await AsyncStorage.removeItem(STORAGE_KEY);
 }
+
+export async function addTransaction(
+  transaction: Transaction
+): Promise<Transaction[]> {
+  const existing = await loadTransactions();
+  const all = [...existing, transaction].sort((a, b) =>
+    b.date.localeCompare(a.date)
+  );
+  await saveTransactions(all);
+  return all;
+}
+
+export async function deleteTransaction(id: string): Promise<Transaction[]> {
+  const existing = await loadTransactions();
+  const all = existing.filter((t) => t.id !== id);
+  await saveTransactions(all);
+  return all;
+}

@@ -9,7 +9,7 @@ function cell(row: string[], index: number): string {
   return (row[index] ?? "").toString().trim();
 }
 
-function parseItalianNumber(raw: string): number | null {
+export function parseItalianNumber(raw: string): number | null {
   let s = raw.trim();
   if (!s) return null;
   s = s.replace(/[€\s]/g, "");
@@ -22,7 +22,7 @@ function parseItalianNumber(raw: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function parseItalianDate(raw: string): string | null {
+export function parseItalianDate(raw: string): string | null {
   const m = raw.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (!m) return null;
   const [, d, mo, y] = m;
@@ -118,6 +118,7 @@ export function parseBbvaWorkbook(base64: string): Transaction[] {
       observations,
       description,
       subtitle,
+      source: "import",
     });
   }
 

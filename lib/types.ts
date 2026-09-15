@@ -10,6 +10,7 @@ export interface Transaction {
   observations: string; // Osservazioni
   description: string; // human friendly title
   subtitle: string; // secondary line, may be empty
+  source?: "import" | "manual"; // absent = imported (legacy data)
 }
 
 export interface MonthSummary {
