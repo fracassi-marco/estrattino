@@ -40,12 +40,9 @@ jobs:
       - name: Prebuild Android project
         run: npx expo prebuild --platform android --no-install
 
-      - name: Enable Gradle build cache and parallel execution
+      - name: Enable Gradle build cache
         run: |
-          cat >> android/gradle.properties <<'EOF'
-          org.gradle.parallel=true
-          org.gradle.caching=true
-          EOF
+          printf '\norg.gradle.caching=true\n' >> android/gradle.properties
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
