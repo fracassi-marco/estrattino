@@ -1,6 +1,6 @@
 {
   "name": "estrattino",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "main": "expo-router/entry",
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
