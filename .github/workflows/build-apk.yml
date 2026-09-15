@@ -14,25 +14,45 @@ jobs:
       CI: "1"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
+
+      - name: Cache Android NDK
+        uses: actions/cache@v6
+        with:
+          path: /usr/local/lib/android/sdk/ndk/27.1.12297006
+          key: ndk-27.1.12297006-${{ runner.os }}
 
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
       - name: Prebuild Android project
         run: npx expo prebuild --platform android --no-install
+
+      - name: Enable Gradle build cache and parallel execution
+        run: |
+          cat >> android/gradle.properties <<'EOF'
+          org.gradle.parallel=true
+          org.gradle.caching=true
+          org.gradle.configuration-cache=true
+          EOF
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-home-cache-cleanup: true
+          cache-read-only: false
 
       - name: Build APK
         working-directory: android
@@ -52,7 +72,7 @@ jobs:
         run: cp "${{ steps.apk.outputs.path }}" "estrattino-${{ github.ref_name }}.apk"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
