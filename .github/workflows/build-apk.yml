@@ -45,7 +45,6 @@ jobs:
           cat >> android/gradle.properties <<'EOF'
           org.gradle.parallel=true
           org.gradle.caching=true
-          org.gradle.configuration-cache=true
           EOF
 
       - name: Setup Gradle
