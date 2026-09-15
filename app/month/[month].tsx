@@ -9,7 +9,7 @@ import { useTransactions } from "../../context/TransactionsContext";
 import { monthLabel } from "../../lib/months";
 import { colors } from "../../lib/theme";
 
-type Filter = "all" | "income" | "expense";
+type Filter = "all" | "income" | "expense" | "manual";
 type Sort = "date" | "amount-desc" | "amount-asc";
 
 function defaultDateForMonth(month: string | undefined): string {
@@ -56,7 +56,9 @@ export default function MonthDetailScreen() {
         ? monthTransactions.filter((t) => t.amount >= 0)
         : filter === "expense"
           ? monthTransactions.filter((t) => t.amount < 0)
-          : monthTransactions;
+          : filter === "manual"
+            ? monthTransactions.filter((t) => t.source === "manual")
+            : monthTransactions;
 
     const sorted = [...byFilter];
     if (sort === "amount-desc") {
@@ -100,6 +102,11 @@ export default function MonthDetailScreen() {
           label="Uscite"
           active={filter === "expense"}
           onPress={() => setFilter("expense")}
+        />
+        <FilterChip
+          label="Manuali"
+          active={filter === "manual"}
+          onPress={() => setFilter("manual")}
         />
         <View style={{ flex: 1 }} />
         <Pressable style={styles.sortButton} onPress={cycleSort} hitSlop={8}>
