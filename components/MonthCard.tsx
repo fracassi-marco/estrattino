@@ -1,6 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { formatCurrency } from "../lib/format";
+import { colors } from "../lib/theme";
 import { MonthSummary } from "../lib/types";
 
 interface Props {
@@ -9,7 +10,7 @@ interface Props {
 }
 
 export function MonthCard({ summary, onPress }: Props) {
-  const diffColor = summary.diff >= 0 ? "#2E7D32" : "#C62828";
+  const diffColor = summary.diff >= 0 ? colors.primaryDark : colors.expense;
   return (
     <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.headerRow}>
@@ -29,30 +30,27 @@ export function MonthCard({ summary, onPress }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
+    backgroundColor: colors.neutral,
+    borderRadius: 14,
     padding: 14,
     marginHorizontal: 16,
     marginVertical: 6,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  title: { fontSize: 16, fontWeight: "600", color: "#222" },
+  title: { fontSize: 16, fontWeight: "700", color: colors.secondary },
   diff: { fontSize: 16, fontWeight: "700" },
   detailsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 6,
   },
-  income: { fontSize: 13, color: "#2E7D32" },
-  expense: { fontSize: 13, color: "#C62828" },
-  count: { fontSize: 11, color: "#999", marginTop: 4 },
+  income: { fontSize: 13, color: colors.primaryDark },
+  expense: { fontSize: 13, color: colors.expense },
+  count: { fontSize: 11, color: colors.textMuted, marginTop: 4 },
 });

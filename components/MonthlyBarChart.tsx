@@ -1,14 +1,15 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { monthLabelShort } from "../lib/months";
+import { colors } from "../lib/theme";
 import { MonthSummary } from "../lib/types";
 
 const CHART_HEIGHT = 140;
 const BAR_WIDTH = 10;
 const COLUMN_WIDTH = 40;
 
-const INCOME_COLOR = "#2E7D32";
-const EXPENSE_COLOR = "#C62828";
+const INCOME_COLOR = colors.primary;
+const EXPENSE_COLOR = colors.expense;
 
 interface Props {
   /** Chronologically ascending, already limited to the months to display. */
@@ -62,7 +63,7 @@ export function MonthlyBarChart({ months, onSelectMonth }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { paddingHorizontal: 12, paddingTop: 8, backgroundColor: "#fff" },
+  container: { paddingHorizontal: 12, paddingTop: 8, backgroundColor: colors.neutral },
   legendRow: {
     flexDirection: "row",
     justifyContent: "center",
@@ -71,7 +72,7 @@ const styles = StyleSheet.create({
   },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
   legendDot: { width: 10, height: 10, borderRadius: 5 },
-  legendText: { fontSize: 12, color: "#555" },
+  legendText: { fontSize: 12, color: colors.secondary },
   chartRow: {
     flexDirection: "row",
     alignItems: "flex-end",

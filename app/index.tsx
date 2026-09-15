@@ -1,19 +1,13 @@
 import { useRouter } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import React, { useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, View } from "react-native";
+import { BalanceBand } from "../components/BalanceBand";
 import { MonthCard } from "../components/MonthCard";
 import { MonthlyBarChart } from "../components/MonthlyBarChart";
-import { YearSummary } from "../components/YearSummary";
 import { useTransactions } from "../context/TransactionsContext";
 import { summarizeByMonth } from "../lib/months";
+import { colors } from "../lib/theme";
 import { MonthSummary } from "../lib/types";
 
 const MAX_CHART_MONTHS = 10;
@@ -62,29 +56,19 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
+      <StatusBar style="light" />
+      <BalanceBand
+        income={yearSummary.income}
+        expense={yearSummary.expense}
+        diff={yearSummary.diff}
+        importing={importing}
+        onImport={handleImport}
+      />
       <FlatList
         data={allMonths}
         keyExtractor={(m) => m.key}
         ListHeaderComponent={
           <View>
-            <View style={styles.header}>
-              <View>
-                <Text style={styles.title}>Le mie spese</Text>
-                <Text style={styles.subtitle}>Conto BBVA</Text>
-              </View>
-              <Pressable
-                style={styles.importButton}
-                onPress={handleImport}
-                disabled={importing}
-              >
-                {importing ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.importButtonText}>Importa</Text>
-                )}
-              </Pressable>
-            </View>
-
             {loading ? (
               <ActivityIndicator style={{ marginTop: 40 }} />
             ) : transactions.length === 0 ? (
@@ -97,11 +81,6 @@ export default function HomeScreen() {
               </View>
             ) : (
               <>
-                <YearSummary
-                  income={yearSummary.income}
-                  expense={yearSummary.expense}
-                  diff={yearSummary.diff}
-                />
                 <MonthlyBarChart months={chartMonths} onSelectMonth={goToMonth} />
                 <Text style={styles.sectionTitle}>Riepilogo mensile</Text>
               </>
@@ -118,30 +97,13 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f5f6f8" },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 4,
-  },
-  title: { fontSize: 22, fontWeight: "700", color: "#1a1a1a" },
-  subtitle: { fontSize: 13, color: "#777" },
-  importButton: {
-    backgroundColor: "#0057B8",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-    minWidth: 92,
-    alignItems: "center",
-  },
-  importButtonText: { color: "#fff", fontWeight: "600" },
+  container: { flex: 1, backgroundColor: colors.neutral },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "600",
-    color: "#444",
+    color: colors.textMuted,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
     marginTop: 18,
     marginBottom: 4,
     marginHorizontal: 16,
@@ -151,7 +113,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 6,
-    color: "#333",
+    color: colors.secondary,
   },
-  emptyText: { fontSize: 13, color: "#777", textAlign: "center" },
+  emptyText: { fontSize: 13, color: colors.textMuted, textAlign: "center" },
 });

@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "spese",
-    "slug": "spese",
+    "name": "Estrattino",
+    "slug": "estrattino",
     "version": "1.0.0",
-    "scheme": "spese",
+    "scheme": "estrattino",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -12,7 +12,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#E9F7EF",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"

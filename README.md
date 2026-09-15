@@ -1,4 +1,4 @@
-# Spese BBVA
+# Estrattino
 
 App Expo (React Native + TypeScript) per visualizzare le spese del conto BBVA a partire da un export xlsx (es. `Downloads/bbva.xlsx`). Vedi il grafico mensile entrate/uscite in home, il riepilogo di ogni mese e il dettaglio dei movimenti con filtro entrate/uscite. I movimenti già importati non vengono mai duplicati, anche importando più volte lo stesso file o file diversi con transazioni sovrapposte.
 
@@ -47,8 +47,8 @@ eas build:configure
 ```json
 {
   "expo": {
-    "ios": { "bundleIdentifier": "com.tuonome.spese" },
-    "android": { "package": "com.tuonome.spese" }
+    "ios": { "bundleIdentifier": "com.tuonome.estrattino" },
+    "android": { "package": "com.tuonome.estrattino" }
   }
 }
 ```

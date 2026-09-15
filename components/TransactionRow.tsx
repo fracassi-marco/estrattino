@@ -1,6 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { formatCurrency, formatDate } from "../lib/format";
+import { colors } from "../lib/theme";
 import { Transaction } from "../lib/types";
 
 export function TransactionRow({ transaction }: { transaction: Transaction }) {
@@ -18,7 +19,9 @@ export function TransactionRow({ transaction }: { transaction: Transaction }) {
         )}
         <Text style={styles.date}>{formatDate(transaction.date)}</Text>
       </View>
-      <Text style={[styles.amount, { color: isExpense ? "#C62828" : "#2E7D32" }]}>
+      <Text
+        style={[styles.amount, { color: isExpense ? colors.expense : colors.primaryDark }]}
+      >
         {isExpense ? "" : "+"}
         {formatCurrency(transaction.amount)}
       </Text>
@@ -33,13 +36,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 10,
     paddingHorizontal: 16,
-    backgroundColor: "#fff",
+    backgroundColor: colors.neutral,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#e5e5e5",
+    borderBottomColor: colors.border,
   },
   left: { flex: 1, paddingRight: 12 },
-  title: { fontSize: 15, color: "#222", fontWeight: "500" },
-  subtitle: { fontSize: 12, color: "#777", marginTop: 1 },
-  date: { fontSize: 11, color: "#aaa", marginTop: 2 },
+  title: { fontSize: 15, color: colors.secondary, fontWeight: "500" },
+  subtitle: { fontSize: 12, color: colors.textMuted, marginTop: 1 },
+  date: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
   amount: { fontSize: 15, fontWeight: "600" },
 });

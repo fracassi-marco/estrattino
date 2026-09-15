@@ -1,16 +1,18 @@
-import { useLocalSearchParams, useNavigation } from "expo-router";
-import React, { useLayoutEffect, useMemo, useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import React, { useMemo, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { MonthBand } from "../../components/MonthBand";
 import { TransactionRow } from "../../components/TransactionRow";
 import { useTransactions } from "../../context/TransactionsContext";
-import { formatCurrency } from "../../lib/format";
 import { monthLabel } from "../../lib/months";
+import { colors } from "../../lib/theme";
 
 type Filter = "all" | "income" | "expense";
 
 export default function MonthDetailScreen() {
   const { month } = useLocalSearchParams<{ month: string }>();
-  const navigation = useNavigation();
+  const router = useRouter();
   const { transactions } = useTransactions();
   const [filter, setFilter] = useState<Filter>("all");
 
@@ -44,25 +46,16 @@ export default function MonthDetailScreen() {
     return monthTransactions;
   }, [monthTransactions, filter]);
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      title: month ? monthLabel(month) : "Dettaglio mese",
-    });
-  }, [navigation, month]);
-
   return (
     <View style={styles.container}>
-      <View style={styles.summaryCard}>
-        <View style={styles.summaryRow}>
-          <SummaryItem label="Entrate" value={income} color="#2E7D32" />
-          <SummaryItem label="Uscite" value={expense} color="#C62828" />
-          <SummaryItem
-            label="Differenza"
-            value={diff}
-            color={diff >= 0 ? "#2E7D32" : "#C62828"}
-          />
-        </View>
-      </View>
+      <StatusBar style="light" />
+      <MonthBand
+        label={month ? monthLabel(month) : "Dettaglio mese"}
+        income={income}
+        expense={expense}
+        diff={diff}
+        onBack={() => router.back()}
+      />
 
       <View style={styles.filterRow}>
         <FilterChip label="Tutti" active={filter === "all"} onPress={() => setFilter("all")} />
@@ -91,23 +84,6 @@ export default function MonthDetailScreen() {
   );
 }
 
-function SummaryItem({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: number;
-  color: string;
-}) {
-  return (
-    <View style={styles.summaryItem}>
-      <Text style={styles.summaryLabel}>{label}</Text>
-      <Text style={[styles.summaryValue, { color }]}>{formatCurrency(value)}</Text>
-    </View>
-  );
-}
-
 function FilterChip({
   label,
   active,
@@ -125,31 +101,22 @@ function FilterChip({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f5f6f8" },
-  summaryCard: {
-    backgroundColor: "#fff",
-    margin: 16,
-    borderRadius: 12,
-    padding: 16,
-  },
-  summaryRow: { flexDirection: "row", justifyContent: "space-between" },
-  summaryItem: { alignItems: "center", flex: 1 },
-  summaryLabel: { fontSize: 12, color: "#888", marginBottom: 4 },
-  summaryValue: { fontSize: 15, fontWeight: "700" },
+  container: { flex: 1, backgroundColor: colors.neutral },
   filterRow: {
     flexDirection: "row",
     gap: 8,
     paddingHorizontal: 16,
+    marginTop: 16,
     marginBottom: 8,
   },
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#eceff3",
+    backgroundColor: colors.border,
   },
-  chipActive: { backgroundColor: "#0057B8" },
-  chipText: { fontSize: 13, color: "#555", fontWeight: "500" },
-  chipTextActive: { color: "#fff" },
-  empty: { textAlign: "center", color: "#999", marginTop: 40 },
+  chipActive: { backgroundColor: colors.secondary },
+  chipText: { fontSize: 13, color: colors.secondary, fontWeight: "500" },
+  chipTextActive: { color: colors.neutral },
+  empty: { textAlign: "center", color: colors.textMuted, marginTop: 40 },
 });

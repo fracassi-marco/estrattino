@@ -15,8 +15,11 @@ export default function RootLayout() {
             headerShadowVisible: false,
           }}
         >
-          <Stack.Screen name="index" options={{ title: "Le mie spese" }} />
-          <Stack.Screen name="month/[month]" options={{ title: "Dettaglio mese" }} />
+          <Stack.Screen name="index" options={{ title: "Le mie spese", headerShown: false }} />
+          <Stack.Screen
+            name="month/[month]"
+            options={{ title: "Dettaglio mese", headerShown: false }}
+          />
         </Stack>
       </TransactionsProvider>
     </SafeAreaProvider>
