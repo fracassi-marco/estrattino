@@ -5,8 +5,10 @@ import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, View } from "reac
 import { BalanceBand } from "../components/BalanceBand";
 import { MonthCard } from "../components/MonthCard";
 import { MonthlyBarChart } from "../components/MonthlyBarChart";
+import { MonthProjectionCard } from "../components/MonthProjectionCard";
 import { useTransactions } from "../context/TransactionsContext";
 import { monthKey, summarizeByMonth } from "../lib/months";
+import { computeAverageCrossoverDay, computeMonthExpenseProjection } from "../lib/projection";
 import { colors } from "../lib/theme";
 import { MonthSummary } from "../lib/types";
 
@@ -43,6 +45,20 @@ export default function HomeScreen() {
       avgDiff: totals.diff / months,
     };
   }, [allMonths]);
+
+  const currentMonthKey = monthKey(new Date().toISOString());
+  const currentMonthTransactions = useMemo(
+    () => transactions.filter((t) => t.date.slice(0, 7) === currentMonthKey),
+    [transactions, currentMonthKey]
+  );
+  const monthProjection = useMemo(
+    () => computeMonthExpenseProjection(currentMonthTransactions),
+    [currentMonthTransactions]
+  );
+  const crossover = useMemo(
+    () => computeAverageCrossoverDay(currentMonthTransactions, yearSummary.avgExpense),
+    [currentMonthTransactions, yearSummary.avgExpense]
+  );
 
   const goToMonth = (key: string) => router.push(`/month/${key}`);
 
@@ -87,12 +103,19 @@ export default function HomeScreen() {
               <View style={styles.emptyState}>
                 <Text style={styles.emptyTitle}>Nessun movimento importato</Text>
                 <Text style={styles.emptyText}>
-                  Importa l&apos;estratto conto BBVA (bbva.xlsx) per iniziare a
+                  Importa l&apos;estratto conto BBVA (xlsx) per iniziare a
                   visualizzare le tue spese.
                 </Text>
               </View>
             ) : (
               <>
+                {currentMonthTransactions.length > 0 && (
+                  <MonthProjectionCard
+                    projection={monthProjection}
+                    crossover={crossover}
+                    avgExpense={yearSummary.avgExpense}
+                  />
+                )}
                 <MonthlyBarChart
                   months={chartMonths}
                   onSelectMonth={goToMonth}

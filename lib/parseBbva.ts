@@ -22,6 +22,13 @@ export function parseItalianNumber(raw: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** Pulls a trailing 3-letter currency code off an amount string like
+ * "-18.52 EUR" (the newer export has no separate currency column). */
+function extractCurrency(raw: string): string | null {
+  const m = raw.trim().match(/([A-Za-z]{3})\s*$/);
+  return m ? m[1].toUpperCase() : null;
+}
+
 export function parseItalianDate(raw: string): string | null {
   const m = raw.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (!m) return null;
@@ -39,34 +46,28 @@ function titleCase(s: string): string {
     .join(" ");
 }
 
+function buildDescription(
+  keyword: string,
+  movement: string
+): { description: string; subtitle: string } {
+  const description = titleCase(keyword) || titleCase(movement) || "Movimento";
+  const showMovementAsSubtitle =
+    !!movement &&
+    movement.toLowerCase() !== keyword.toLowerCase() &&
+    !GENERIC_MOVEMENTS.has(movement.toLowerCase());
+  const subtitle = showMovementAsSubtitle ? titleCase(movement) : "";
+  return { description, subtitle };
+}
+
 /**
- * Parses a BBVA "Ultime transazioni" export (xlsx, base64-encoded) into a
- * flat list of Transaction records. The export has a few title rows before
- * the real header ("Data valuta", "Data", "Parola chiave", "Movimento",
+ * Parses the older "Ultime transazioni" export: a few title rows, then a
+ * header row ("Data valuta", "Data", "Parola chiave", "Movimento",
  * "Importo", "Valuta", "Disponibile", "Valuta", "Osservazioni").
  */
-export function parseBbvaWorkbook(base64: string): Transaction[] {
-  const workbook = XLSX.read(base64, { type: "base64" });
-  const sheetName = workbook.SheetNames[0];
-  if (!sheetName) {
-    throw new Error("Il file non contiene alcun foglio.");
-  }
-  const sheet = workbook.Sheets[sheetName];
-  const rows: string[][] = XLSX.utils.sheet_to_json(sheet, {
-    header: 1,
-    raw: false,
-    defval: "",
-  });
-
-  const headerIdx = rows.findIndex(
-    (r) => cell(r, 0).toLowerCase() === HEADER_MARKER
-  );
-  if (headerIdx === -1) {
-    throw new Error(
-      'Formato non riconosciuto: intestazione "Data valuta" non trovata.'
-    );
-  }
-
+function parseUltimeTransazioniRows(
+  rows: string[][],
+  headerIdx: number
+): Transaction[] {
   const transactions: Transaction[] = [];
 
   for (let i = headerIdx + 1; i < rows.length; i++) {
@@ -89,12 +90,7 @@ export function parseBbvaWorkbook(base64: string): Transaction[] {
     const balance = parseItalianNumber(cell(row, 6));
     const observations = cell(row, 8);
 
-    const description = titleCase(keyword) || titleCase(movement) || "Movimento";
-    const showMovementAsSubtitle =
-      movement &&
-      movement.toLowerCase() !== keyword.toLowerCase() &&
-      !GENERIC_MOVEMENTS.has(movement.toLowerCase());
-    const subtitle = showMovementAsSubtitle ? titleCase(movement) : "";
+    const { description, subtitle } = buildDescription(keyword, movement);
 
     const idSource = [
       valueDate,
@@ -123,4 +119,105 @@ export function parseBbvaWorkbook(base64: string): Transaction[] {
   }
 
   return transactions;
+}
+
+/**
+ * Parses the newer "Movimenti" export: a few title rows, then a header row
+ * ("Data valuta", "Data", "Causale", "Movimento", "Beneficiario", "Importo").
+ * "Causale" carries the merchant/description text and "Movimento" the
+ * (often generic) transaction type, i.e. the same roles "Parola chiave" and
+ * "Movimento" play in the older export, so they feed description/subtitle
+ * the same way. This format has no running-balance column, so `balance` is
+ * always null for these rows.
+ */
+function parseMovimentiRows(rows: string[][], headerIdx: number): Transaction[] {
+  const transactions: Transaction[] = [];
+
+  for (let i = headerIdx + 1; i < rows.length; i++) {
+    const row = rows[i];
+    const valueDateRaw = cell(row, 0);
+    const dateRaw = cell(row, 1);
+    if (!valueDateRaw || !dateRaw) continue;
+
+    const valueDate = parseItalianDate(valueDateRaw);
+    const date = parseItalianDate(dateRaw);
+    if (!valueDate || !date) continue;
+
+    const amountRaw = cell(row, 5);
+    const amount = parseItalianNumber(amountRaw);
+    if (amount === null) continue;
+
+    const keyword = cell(row, 2); // Causale
+    const movement = cell(row, 3); // Movimento
+    const currency = extractCurrency(amountRaw) || "EUR";
+    const observations = keyword;
+
+    const { description, subtitle } = buildDescription(keyword, movement);
+
+    const idSource = [valueDate, date, keyword, movement, amount.toFixed(2)].join(
+      "|"
+    );
+
+    transactions.push({
+      id: cyrb53(idSource),
+      valueDate,
+      date,
+      keyword,
+      movement,
+      amount,
+      currency,
+      balance: null,
+      observations,
+      description,
+      subtitle,
+      source: "import",
+    });
+  }
+
+  return transactions;
+}
+
+/**
+ * Parses a BBVA xlsx export into a flat list of Transaction records. Two
+ * export formats are recognized automatically from the header row found
+ * below a few title rows:
+ * - "Ultime transazioni": ..., "Parola chiave", "Movimento", "Importo", ...
+ * - "Movimenti": ..., "Causale", "Movimento", "Beneficiario", "Importo"
+ *
+ * The running balance is only available in the older format, so
+ * cross-format duplicate detection (same movement present in both an old
+ * and a new export) is handled in storage.ts, not via the id alone.
+ */
+export function parseBbvaWorkbook(base64: string): Transaction[] {
+  const workbook = XLSX.read(base64, { type: "base64" });
+  const sheetName = workbook.SheetNames[0];
+  if (!sheetName) {
+    throw new Error("Il file non contiene alcun foglio.");
+  }
+  const sheet = workbook.Sheets[sheetName];
+  const rows: string[][] = XLSX.utils.sheet_to_json(sheet, {
+    header: 1,
+    raw: false,
+    defval: "",
+  });
+
+  const headerIdx = rows.findIndex(
+    (r) => cell(r, 0).toLowerCase() === HEADER_MARKER
+  );
+  if (headerIdx === -1) {
+    throw new Error(
+      'Formato non riconosciuto: intestazione "Data valuta" non trovata.'
+    );
+  }
+
+  const formatMarker = cell(rows[headerIdx], 2).toLowerCase();
+  if (formatMarker === "parola chiave") {
+    return parseUltimeTransazioniRows(rows, headerIdx);
+  }
+  if (formatMarker === "causale") {
+    return parseMovimentiRows(rows, headerIdx);
+  }
+  throw new Error(
+    'Formato non riconosciuto: colonna "Parola chiave"/"Causale" non trovata.'
+  );
 }
