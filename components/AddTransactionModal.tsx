@@ -9,20 +9,32 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { parseItalianDate, parseItalianNumber } from "../lib/parseBbva";
+import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
+import { parseItalianNumber } from "../lib/parseBbva";
 import { colors } from "../lib/theme";
 
 type EntryType = "income" | "expense";
 
 interface Props {
   visible: boolean;
-  defaultDate: string; // ISO yyyy-mm-dd, prefilled into the date field
+  defaultDate: string; // ISO yyyy-mm-dd, preselected in the date picker
   onClose: () => void;
   onSubmit: (input: { date: string; description: string; amount: number }) => void;
 }
 
-function toItalianDate(iso: string): string {
-  const [y, m, d] = iso.split("-");
+function isoToDate(iso: string): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function dateToIso(date: Date): string {
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${m}-${d}`;
+}
+
+function toItalianDate(date: Date): string {
+  const [y, m, d] = dateToIso(date).split("-");
   return `${d}/${m}/${y}`;
 }
 
@@ -30,7 +42,7 @@ export function AddTransactionModal({ visible, defaultDate, onClose, onSubmit }:
   const [type, setType] = useState<EntryType>("expense");
   const [description, setDescription] = useState("");
   const [amountText, setAmountText] = useState("");
-  const [dateText, setDateText] = useState(toItalianDate(defaultDate));
+  const [date, setDate] = useState(() => isoToDate(defaultDate));
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -38,7 +50,7 @@ export function AddTransactionModal({ visible, defaultDate, onClose, onSubmit }:
       setType("expense");
       setDescription("");
       setAmountText("");
-      setDateText(toItalianDate(defaultDate));
+      setDate(isoToDate(defaultDate));
       setError("");
     }
   }, [visible, defaultDate]);
@@ -54,15 +66,18 @@ export function AddTransactionModal({ visible, defaultDate, onClose, onSubmit }:
       setError("Inserisci un importo valido.");
       return;
     }
-    const date = parseItalianDate(dateText);
-    if (!date) {
-      setError("Inserisci una data valida (GG/MM/AAAA).");
-      return;
-    }
     onSubmit({
-      date,
+      date: dateToIso(date),
       description: trimmedDescription,
       amount: type === "expense" ? -amount : amount,
+    });
+  };
+
+  const openAndroidPicker = () => {
+    DateTimePickerAndroid.open({
+      value: date,
+      mode: "date",
+      onValueChange: (_event, selected) => setDate(selected),
     });
   };
 
@@ -111,14 +126,22 @@ export function AddTransactionModal({ visible, defaultDate, onClose, onSubmit }:
               onChangeText={setAmountText}
               keyboardType="decimal-pad"
             />
-            <TextInput
-              style={[styles.input, styles.rowInput]}
-              placeholder="GG/MM/AAAA"
-              placeholderTextColor={colors.textMuted}
-              value={dateText}
-              onChangeText={setDateText}
-              keyboardType="numbers-and-punctuation"
-            />
+            {Platform.OS === "ios" ? (
+              <View style={[styles.input, styles.rowInput, styles.iosDateInput]}>
+                <DateTimePicker
+                  value={date}
+                  mode="date"
+                  display="compact"
+                  locale="it-IT"
+                  accentColor={colors.primary}
+                  onValueChange={(_event, selected) => setDate(selected)}
+                />
+              </View>
+            ) : (
+              <Pressable style={[styles.input, styles.rowInput]} onPress={openAndroidPicker}>
+                <Text style={styles.dateText}>{toItalianDate(date)}</Text>
+              </Pressable>
+            )}
           </View>
 
           {!!error && <Text style={styles.error}>{error}</Text>}
@@ -172,6 +195,8 @@ const styles = StyleSheet.create({
   },
   row: { flexDirection: "row", gap: 12 },
   rowInput: { flex: 1 },
+  dateText: { fontSize: 15, color: colors.secondary },
+  iosDateInput: { paddingVertical: 6, alignItems: "flex-start", justifyContent: "center" },
   error: { color: colors.expense, fontSize: 12, marginBottom: 8 },
   actionsRow: { flexDirection: "row", gap: 12, marginTop: 4 },
   actionButton: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: "center" },
