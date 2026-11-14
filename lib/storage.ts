@@ -8,7 +8,11 @@ export async function loadTransactions(): Promise<Transaction[]> {
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    // Cleans up cross-format duplicates stored by earlier versions.
+    const reconciled = reconcileFormats(parsed);
+    if (reconciled.length !== parsed.length) await saveTransactions(reconciled);
+    return reconciled;
   } catch {
     return [];
   }
@@ -32,49 +36,63 @@ function dedupeKey(t: Transaction): string {
 }
 
 /**
- * Merges newly-parsed transactions into storage, de-duplicating by id.
- * The id is derived from all the fields of a row (see parseBbva.ts), so
- * re-importing the same file, an overlapping export, or a file containing
- * the same movements never creates duplicate entries.
- *
- * The older "Ultime transazioni" format bakes the running balance into the
- * id; the newer "Movimenti" format has no balance column at all, so a
- * movement imported from one can never hash to the same id as the same
- * movement imported from the other. For incoming rows with no balance
- * (i.e. parsed from the newer format) we fall back to matching on
- * `dedupeKey` against everything already stored, so re-importing an
- * overlapping "Movimenti" export after an "Ultime transazioni" one (or vice
- * versa) doesn't duplicate movements. This fallback is skipped for incoming
- * rows that do have a balance, to avoid the (rarer) risk of two distinct
- * same-day, same-amount movements from the older format being merged into
- * one just because they share a key.
+ * Removes the same movement stored twice, once per export format. The older
+ * "Ultime transazioni" format bakes the running balance into the id, the
+ * newer "Movimenti" one has no balance, so the two never share an id. Imported
+ * rows with a balance are paired one-to-one with imported rows without one
+ * that have the same `dedupeKey`, and the balance-less row of each pair is
+ * dropped (the other is the richer record). Pairing one-to-one keeps two
+ * genuinely distinct same-day, same-amount movements apart. Manual entries
+ * are never touched.
+ */
+function reconcileFormats(all: Transaction[]): Transaction[] {
+  const withBalance = new Map<string, number>();
+  for (const t of all) {
+    if (t.source === "manual" || t.balance === null) continue;
+    const k = dedupeKey(t);
+    withBalance.set(k, (withBalance.get(k) ?? 0) + 1);
+  }
+  if (withBalance.size === 0) return all;
+
+  return all.filter((t) => {
+    if (t.source === "manual" || t.balance !== null) return true;
+    const k = dedupeKey(t);
+    const left = withBalance.get(k) ?? 0;
+    if (left === 0) return true;
+    withBalance.set(k, left - 1);
+    return false;
+  });
+}
+
+/**
+ * Merges newly-parsed transactions into storage, de-duplicating by id (the
+ * id is derived from all the fields of a row, so re-importing the same file
+ * or an overlapping export never creates duplicates), then reconciles the two
+ * export formats (see reconcileFormats), whichever one was imported first.
  */
 export async function mergeTransactions(
   incoming: Transaction[]
 ): Promise<MergeResult> {
   const existing = await loadTransactions();
   const byId = new Map(existing.map((t) => [t.id, t]));
-  const existingKeys = new Set(existing.map(dedupeKey));
 
-  let added = 0;
-  let duplicates = 0;
+  const incomingIds = new Set<string>();
   for (const t of incoming) {
-    const isDuplicate =
-      byId.has(t.id) || (t.balance === null && existingKeys.has(dedupeKey(t)));
-    if (isDuplicate) {
-      duplicates++;
-      continue;
+    if (!byId.has(t.id)) {
+      byId.set(t.id, t);
+      incomingIds.add(t.id);
     }
-    byId.set(t.id, t);
-    existingKeys.add(dedupeKey(t));
-    added++;
   }
 
-  const all = Array.from(byId.values()).sort((a, b) =>
+  const all = reconcileFormats(Array.from(byId.values())).sort((a, b) =>
     b.date.localeCompare(a.date)
   );
   await saveTransactions(all);
-  return { all, added, duplicates };
+
+  const kept = new Set(all.map((t) => t.id));
+  let added = 0;
+  for (const id of incomingIds) if (kept.has(id)) added++;
+  return { all, added, duplicates: incoming.length - added };
 }
 
 export async function clearTransactions(): Promise<void> {
