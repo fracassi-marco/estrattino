@@ -14,7 +14,11 @@ export function parseItalianNumber(raw: string): number | null {
   if (!s) return null;
   s = s.replace(/[€\s]/g, "");
   if (s.includes(",") && s.includes(".")) {
-    s = s.replace(/\./g, "").replace(",", ".");
+    // Whichever separator comes last is the decimal one: the older export
+    // uses "1.234,56", the newer one "1,234.56".
+    const decimal = s.lastIndexOf(",") > s.lastIndexOf(".") ? "," : ".";
+    const thousands = decimal === "," ? /\./g : /,/g;
+    s = s.replace(thousands, "").replace(decimal, ".");
   } else if (s.includes(",")) {
     s = s.replace(",", ".");
   }

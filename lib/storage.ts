@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { cyrb53 } from "./hash";
 import { Transaction } from "./types";
 
 const STORAGE_KEY = "bbva_transactions_v1";
@@ -11,7 +12,7 @@ export async function loadTransactions(): Promise<Transaction[]> {
     if (!Array.isArray(parsed)) return [];
     // Cleans up cross-format duplicates stored by earlier versions.
     const reconciled = reconcileFormats(parsed);
-    if (reconciled.length !== parsed.length) await saveTransactions(reconciled);
+    if (JSON.stringify(reconciled) !== raw) await saveTransactions(reconciled);
     return reconciled;
   } catch {
     return [];
@@ -46,22 +47,81 @@ function dedupeKey(t: Transaction): string {
  * are never touched.
  */
 function reconcileFormats(all: Transaction[]): Transaction[] {
-  const withBalance = new Map<string, number>();
-  for (const t of all) {
-    if (t.source === "manual" || t.balance === null) continue;
-    const k = dedupeKey(t);
-    withBalance.set(k, (withBalance.get(k) ?? 0) + 1);
-  }
-  if (withBalance.size === 0) return all;
+  const repaired = repairLegacyAmounts(all);
 
-  return all.filter((t) => {
+  const withBalance = new Map<string, number>();
+  const withBalanceLegacy = new Map<string, number>();
+  const bump = (m: Map<string, number>, k: string, by: number) =>
+    m.set(k, (m.get(k) ?? 0) + by);
+  for (const t of repaired) {
+    if (t.source === "manual" || t.balance === null) continue;
+    bump(withBalance, dedupeKey(t), 1);
+    if (Math.abs(t.amount) >= 1000) bump(withBalanceLegacy, legacyKey(t), 1);
+  }
+  if (withBalance.size === 0) return repaired;
+
+  // Each balance row can absorb a single balance-less row, whichever map
+  // finds it, so a pair is never counted through both.
+  const claimed = new Map<string, number>();
+  return repaired.filter((t) => {
     if (t.source === "manual" || t.balance !== null) return true;
     const k = dedupeKey(t);
-    const left = withBalance.get(k) ?? 0;
-    if (left === 0) return true;
-    withBalance.set(k, left - 1);
-    return false;
+    if ((withBalance.get(k) ?? 0) > 0) {
+      bump(withBalance, k, -1);
+      return false;
+    }
+    const lk = [t.valueDate, t.date, t.amount.toFixed(5), t.currency].join("|");
+    if ((withBalanceLegacy.get(lk) ?? 0) > (claimed.get(lk) ?? 0)) {
+      bump(claimed, lk, 1);
+      return false;
+    }
+    return true;
   });
+}
+
+/**
+ * Earlier versions parsed "1,234.56" (newer export) as 1.23456, so the
+ * balance-less rows stored back then carry a wrong amount, and with it a
+ * wrong id and dedupeKey. A real amount never has more than two decimals,
+ * so those are recognisable and the original value can be rebuilt: toFixed(5)
+ * gives "A.BBBCC", i.e. the original "A,BBB.CC". Ambiguous leftovers (e.g.
+ * 2,500.00 became 2.5) are caught by legacyKey in reconcileFormats instead.
+ */
+function repairLegacyAmounts(all: Transaction[]): Transaction[] {
+  const seen = new Set<string>();
+  const out: Transaction[] = [];
+  for (const t of all) {
+    let r = t;
+    const cents = t.amount * 100;
+    if (
+      t.source !== "manual" &&
+      t.balance === null &&
+      Math.abs(cents - Math.round(cents)) > 1e-6
+    ) {
+      const [int, dec] = Math.abs(t.amount).toFixed(5).split(".");
+      const amount = Math.sign(t.amount) * parseFloat(`${int}${dec.slice(0, 3)}.${dec.slice(3)}`);
+      const id = cyrb53(
+        [t.valueDate, t.date, t.keyword, t.movement, amount.toFixed(2)].join("|")
+      );
+      r = { ...t, amount, id };
+    }
+    if (seen.has(r.id)) continue;
+    seen.add(r.id);
+    out.push(r);
+  }
+  return out;
+}
+
+/** The amount a balance row would have had if it had been mis-parsed by the
+ * old "1,234.56" bug, so it can be matched to a corrupted balance-less row. */
+function legacyKey(t: Transaction): string {
+  const [int, dec] = Math.abs(t.amount).toFixed(2).split(".");
+  const wrong =
+    int.length <= 6
+      ? Math.sign(t.amount) *
+        parseFloat(`${int.slice(0, -3)}.${int.slice(-3)}${dec}`)
+      : t.amount;
+  return [t.valueDate, t.date, wrong.toFixed(5), t.currency].join("|");
 }
 
 /**
