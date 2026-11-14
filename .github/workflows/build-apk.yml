@@ -12,6 +12,7 @@ jobs:
       contents: write
     env:
       CI: "1"
+      EXPO_PUBLIC_APP_VERSION: ${{ github.ref_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7

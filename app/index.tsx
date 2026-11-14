@@ -14,6 +14,7 @@ import { MonthSummary } from "../lib/types";
 
 const MAX_CHART_MONTHS = 10;
 const YEAR_MONTHS = 12;
+const APP_VERSION = process.env.EXPO_PUBLIC_APP_VERSION || "dev";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -130,6 +131,7 @@ export default function HomeScreen() {
         renderItem={({ item }: { item: MonthSummary }) => (
           <MonthCard summary={item} onPress={() => goToMonth(item.key)} />
         )}
+        ListFooterComponent={<Text style={styles.version}>Versione {APP_VERSION}</Text>}
         contentContainerStyle={{ paddingBottom: 24 }}
       />
     </View>
@@ -147,6 +149,12 @@ const styles = StyleSheet.create({
     marginTop: 18,
     marginBottom: 4,
     marginHorizontal: 16,
+  },
+  version: {
+    fontSize: 12,
+    color: colors.textMuted,
+    textAlign: "center",
+    marginTop: 24,
   },
   emptyState: { padding: 24, alignItems: "center" },
   emptyTitle: {
